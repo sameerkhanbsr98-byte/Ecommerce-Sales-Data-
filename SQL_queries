@@ -1,0 +1,221 @@
+-- 1.	General Sales Insights
+
+-- 1.1.	What is the total revenue generated over the entire period?
+SELECT sum(O.quantity*p.price) as Total_Revenue
+FROM orderdetails O
+JOIN Products p
+ON p.productID=O.ProductID;
+
+-- 1.2.	Revenue Excluding Returned Orders
+SELECT sum(o.quantity*p.price) as total_revenue
+FROM orderdetails o
+JOIN products p ON p.productID=o.ProductID
+JOIN orders od ON od.OrderID=o.OrderID
+WHERE od.IsReturned=0;
+
+-- 1.3.	Total Revenue per Year / Month
+SELECT 
+    YEAR(od.OrderDate) AS order_year,
+    MONTH(od.OrderDate) AS order_month,
+    SUM(o.quantity * p.price) AS total_revenue
+FROM orderdetails o
+JOIN products p 
+    ON p.ProductID = o.ProductID
+JOIN orders od 
+    ON od.OrderID = o.OrderID
+GROUP BY YEAR(od.OrderDate), MONTH(od.OrderDate)
+ORDER BY order_year, order_month;
+
+-- 1.4.	Revenue by Product / Category
+
+-- BY category
+SELECT p.category, SUM(o.quantity * p.price) AS revenue
+FROM products p
+JOIN orderdetails o ON o.productID=p.productID
+GROUP BY p.category;
+
+-- BY product
+SELECT p.ProductName, SUM(o.quantity * p.price) AS revenue
+FROM products p
+JOIN orderdetails o ON o.productID=p.productID
+GROUP BY p.ProductName;
+
+-- 1.5.	What is the average order value (AOV) across all orders?
+SELECT SUM(o.quantity * p.price)/COUNT(DISTINCT o.orderID) AS avg_ord_value
+FROM orderdetails o
+JOIN products p
+ON p.productID=o.productID;
+
+-- 1.6.	AOV per Year / Month
+SELECT YEAR(od.orderDate) as avg_year,
+		MONTH(od.orderDate) AS avg_mon,
+SUM(o.quantity * p.price)/COUNT(DISTINCT o.orderID) AS avg_ord_value
+FROM orderdetails o
+JOIN products p
+ON p.productID=o.productID
+JOIN orders od ON od.orderID=o.orderID
+GROUP BY YEAR(od.orderDate),MONTH(od.orderDate)
+ORDER BY avg_year,avg_mon;
+
+-- 1.7.	What is the average order size by region?
+SELECT r.RegionName,
+	SUM(o.quantity)/COUNT(DISTINCT o.OrderID) as avg_order_size
+FROM orderDetails o
+JOIN orders od ON od.OrderID=o.OrderID
+JOIN customers c ON c.customerID=od.CustomerID
+JOIN Regions r ON r.RegionID=c.RegionID
+GROUP BY r.RegionName;
+
+-- 2.1.	Who are the top 10 customers by total revenue spent?
+SELECT c.customerName, SUM(o.quantity*p.price) as total_revenue_spent
+FROM orderdetails o
+JOIN products p ON p.ProductID=o.ProductID
+JOIN orders os ON os.orderID=o.OrderID
+JOIN customers c ON c.CustomerID=os.customerID
+GROUP BY c.CustomerName
+ORDER BY total_revenue_spent DESC
+LIMIT 10;
+
+-- 3.1.	What are the top 10 most sold products (by quantity)?
+SELECT p.ProductName,SUM(o.Quantity) AS TotalQuantitySold
+FROM Products p
+JOIN OrderDetails o 
+ON p.ProductID = o.ProductID
+GROUP BY p.ProductName
+ORDER BY TotalQuantitySold DESC
+LIMIT 10;
+
+-- 3.2.	What are the top 10 most sold products (by revenue)?
+SELECT p.ProductName,SUM(o.Quantity*p.price) AS Total_Revenue
+FROM Products p
+JOIN OrderDetails o 
+ON p.ProductID = o.ProductID
+GROUP BY p.ProductName
+ORDER BY Total_Revenue DESC
+LIMIT 10;
+
+-- 3.3.	Which products have the highest return rate?
+SELECT p.productName,
+	ROUND(
+		SUM(CASE WHEN o.isreturned=1 THEN od.quantity ELSE 0 END)*100.0/
+		SUM(od.quantity),2) as Return_rate
+FROM products p
+JOIN orderdetails od ON od.ProductID=p.ProductID
+JOIN orders o ON o.OrderID=od.OrderID
+GROUP BY p.productName
+ORDER BY Return_rate DESC
+LIMIT 1;
+
+-- 3.4.	Return Rate by Category
+SELECT p.Category,
+	ROUND(
+		SUM(CASE WHEN o.isreturned=1 THEN od.quantity ELSE 0 END)*100.0/
+		SUM(od.quantity),2) as Return_rate
+FROM products p
+JOIN orderdetails od ON od.ProductID=p.ProductID
+JOIN orders o ON o.OrderID=od.OrderID
+GROUP BY p.category
+ORDER BY Return_rate DESC;
+
+-- 3.5.	What is the average price of products per region?
+SELECT r.regionName,
+		ROUND(avg(p.price),2) as avg_product_price
+FROM regions r
+JOIN customers c ON r.regionID=c.RegionID
+JOIN orders o ON o.CustomerID=c.CustomerID
+JOIN orderdetails od ON od.OrderID=o.OrderID
+JOIN products p ON p.ProductID=od.ProductID
+GROUP BY r.RegionName
+ORDER BY avg_product_price;
+
+-- 3.6.	What is the sales trend for each product category?
+SELECT p.category,
+		SUM(od.quantity*p.price) as Sales,
+        MONTH(o.orderDate) as 'month',
+        YEAR(o.orderDate) as 'year'
+FROM orderdetails od 
+JOIN products p ON p.ProductID=od.ProductID
+JOIN orders o ON o.OrderID=od.OrderID
+GROUP BY p.category,
+        MONTH(o.orderDate),
+        year(o.orderDate)
+ORDER BY p.Category,month,year;
+
+-- 4.1.	What are the monthly sales trends over the past year?
+SELECT 
+    DATE_FORMAT(o.OrderDate, '%Y-%m') AS Month,
+    SUM(od.Quantity * p.Price) AS TotalSales
+FROM orders o
+JOIN orderdetails od ON o.OrderID = od.OrderID
+JOIN products p ON p.ProductID = od.ProductID
+WHERE o.isReturned = 0
+  AND DATEDIFF(CURDATE(), o.OrderDate) <= 365
+GROUP BY DATE_FORMAT(o.OrderDate, '%Y-%m')
+ORDER BY Month;
+
+-- 4.2.	How does the average order value (AOV) change by month or week?
+SELECT ROUND(sum(od.quantity*p.price)/count(distinct(od.orderID)),2) as AOV,
+		DATE_FORMAT(O.orderDate,'%Y-%m') as month
+FROM products p
+JOIN orderdetails od ON od.ProductID=p.ProductID
+JOIN orders o ON o.OrderID=od.OrderID
+WHERE IsReturned=0
+GROUP BY DATE_FORMAT(O.orderDate,'%Y-%m')
+ORDER BY month;
+
+-- 5.1.	Which regions have the highest order volume and which have the lowest?
+SELECT r.regionName,
+       COUNT(DISTINCT o.OrderID) AS OrderVolume
+FROM regions r
+JOIN customers c ON r.RegionID = c.RegionID
+JOIN orders o ON o.CustomerID = c.CustomerID
+GROUP BY r.regionName
+ORDER BY OrderVolume DESC;
+
+-- 5.2.	What is the revenue per region and how does it compare across different regions?
+SELECT r.regionName,SUM(od.quantity*p.price) as revenue
+FROM orderDetails od
+JOIN orders o ON od.OrderID=o.OrderID
+JOIN customers c ON c.customerID=o.CustomerID
+JOIN Regions r ON r.RegionID=c.RegionID
+JOIN products p ON p.ProductID=od.ProductID
+GROUP BY r.RegionName
+ORDER BY revenue;
+
+-- 6.1.	What is the overall return rate by product category?
+SELECT p.Category,
+       ROUND(
+         SUM(CASE WHEN o.isReturned = 1 THEN od.Quantity ELSE 0 END) * 100.0
+         / SUM(od.Quantity), 2
+       ) AS ReturnRate
+FROM products p
+JOIN orderdetails od ON p.ProductID = od.ProductID
+JOIN orders o ON o.OrderID = od.OrderID
+GROUP BY p.Category
+ORDER BY ReturnRate DESC;
+
+-- 6.2.	What is the overall return rate by region?
+SELECT r.regionName,
+       ROUND(
+         SUM(CASE WHEN o.isReturned = 1 THEN od.Quantity ELSE 0 END) * 100.0
+         / SUM(od.Quantity), 2
+       ) AS ReturnRate
+FROM regions r
+JOIN customers c ON c.regionID=r.regionID
+JOIN orders o        ON o.customerID=c.customerID
+JOIN orderdetails od ON o.OrderID = od.OrderID
+GROUP BY r.regionName
+ORDER BY ReturnRate DESC;
+
+-- 6.3.	Which customers are making frequent returns?
+SELECT c.customerID,
+       c.customerName,
+       COUNT(*) AS frequent_returns
+FROM orders o
+JOIN customers c ON c.customerID = o.customerID
+WHERE o.isReturned = 1
+GROUP BY c.customerID, c.customerName
+HAVING COUNT(*) >= 1
+ORDER BY frequent_returns DESC;
+
+
