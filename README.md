@@ -2,7 +2,7 @@
 
 ## Tools Used
 - SQL (MySQL / PostgreSQL)
-- Microsoft Excel / Power BI (for basic visualization, if applicable)
+- Microsoft Excel / Power BI (for basic visualization)
 
 ## Project Overview
 This project focuses on analyzing e-commerce sales data using SQL to understand customer behavior, product performance, and overall sales trends. The objective is to practice real-world analytical queries and generate meaningful insights from structured datasets.
